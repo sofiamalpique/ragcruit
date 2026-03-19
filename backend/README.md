@@ -29,6 +29,8 @@ uv run pytest
 
 If `DATABASE_URL` is not set, the backend uses the local SQLite fallback automatically.
 
+See the root `.env.example` for a minimal local PostgreSQL example.
+
 For PostgreSQL, use a SQLAlchemy URL like:
 
 ```bash
