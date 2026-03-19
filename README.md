@@ -10,3 +10,4 @@ docker compose up -d postgres
 ```
 
 The defaults in `docker-compose.yml` match the `DATABASE_URL` value in `.env.example`.
+The local database image now includes pgvector, so the extension can be enabled in the database when the backend is ready to use it.
