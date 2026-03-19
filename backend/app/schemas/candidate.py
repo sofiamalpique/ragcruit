@@ -10,12 +10,13 @@ class CandidateBase(BaseModel):
     location: str | None = None
     summary: str | None = None
     years_experience: float | None = Field(default=None, ge=0)
-    skills: list[str] = Field(default_factory=list)
 
 
 class CandidateCreate(CandidateBase):
-    pass
+    skills: list[str] = Field(default_factory=list)
 
 
 class CandidateRead(CandidateBase):
-    pass
+    model_config = ConfigDict(str_strip_whitespace=True, from_attributes=True)
+
+    id: int

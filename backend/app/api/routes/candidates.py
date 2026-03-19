@@ -1,5 +1,7 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
+from app.db.session import get_db_session
 from app.schemas.candidate import CandidateCreate, CandidateRead
 from app.services.candidate_mapper import candidate_create_to_model
 
@@ -8,15 +10,13 @@ router = APIRouter(prefix="/candidates", tags=["candidates"])
 
 
 @router.post("", response_model=CandidateRead, status_code=201)
-def create_candidate(candidate_in: CandidateCreate) -> CandidateRead:
+def create_candidate(
+    candidate_in: CandidateCreate,
+    db_session: Session = Depends(get_db_session),
+) -> CandidateRead:
     candidate = candidate_create_to_model(candidate_in)
+    db_session.add(candidate)
+    db_session.commit()
+    db_session.refresh(candidate)
 
-    return CandidateRead(
-        full_name=candidate.full_name,
-        email=candidate.email,
-        phone=candidate.phone,
-        location=candidate.location,
-        summary=candidate.summary,
-        years_experience=candidate.years_experience,
-        skills=candidate_in.skills,
-    )
+    return CandidateRead.model_validate(candidate)
