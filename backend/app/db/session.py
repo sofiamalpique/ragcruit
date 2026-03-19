@@ -7,10 +7,13 @@ from app.core.config import database_url
 
 
 is_sqlite = database_url.startswith("sqlite")
+engine_kwargs = {
+    "connect_args": {"check_same_thread": False},
+} if is_sqlite else {}
 
 engine = create_engine(
     database_url,
-    connect_args={"check_same_thread": False} if is_sqlite else {},
+    **engine_kwargs,
 )
 
 SessionLocal = sessionmaker(
