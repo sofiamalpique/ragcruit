@@ -10,5 +10,5 @@ docker compose up --build
 ```
 
 The defaults in `docker-compose.yml` match the `DATABASE_URL` value in `.env.example`.
-The local database image now includes pgvector, so the extension can be enabled in the database when the backend is ready to use it.
+On a fresh Postgres volume, Compose now enables the `vector` extension automatically during database initialization.
 The backend is available at `http://localhost:8000`.
