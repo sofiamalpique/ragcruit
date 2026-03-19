@@ -25,6 +25,20 @@ uv run uvicorn app.main:app --reload
 uv run pytest
 ```
 
+## Database URL
+
+If `DATABASE_URL` is not set, the backend uses the local SQLite fallback automatically.
+
+See the root `.env.example` for a minimal local PostgreSQL example.
+
+The backend uses `psycopg[binary]` for local development, so a separate local `libpq` installation is not required.
+
+For PostgreSQL, use a SQLAlchemy URL like:
+
+```bash
+export DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/ragcruit"
+```
+
 ## Scope
 
 This folder currently contains only the initial application structure and a basic health check endpoint.
