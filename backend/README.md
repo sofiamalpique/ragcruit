@@ -33,6 +33,7 @@ See the root `.env.example` for a minimal local PostgreSQL example.
 
 The backend uses `psycopg[binary]` for local development, so a separate local `libpq` installation is not required.
 The `pgvector` Python package is also installed, so SQLAlchemy vector columns can be added next without more driver setup.
+To enable real candidate embeddings generation, set `OPENAI_API_KEY`. The default embedding model is `text-embedding-3-small`.
 
 For PostgreSQL, use a SQLAlchemy URL like:
 
