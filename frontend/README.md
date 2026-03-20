@@ -30,6 +30,8 @@ npm run dev
 
 The app expects the backend to be available at `http://localhost:8000`. In local Vite development, `/candidates` requests are proxied to that backend.
 
+For the full local stack, the root `docker compose up --build` command now runs PostgreSQL, the backend, and this frontend together.
+
 ## Backend Endpoints Used
 
 - `POST /candidates`
