@@ -13,5 +13,7 @@ using_default_database_url = "DATABASE_URL" not in os.environ
 using_local_sqlite_fallback = using_default_database_url and database_url == default_database_url
 should_create_tables_on_startup = using_local_sqlite_fallback
 
-openai_api_key = os.getenv("OPENAI_API_KEY")
-openai_embedding_model = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+embedding_model_name = os.getenv(
+    "EMBEDDING_MODEL_NAME",
+    "sentence-transformers/all-MiniLM-L6-v2",
+)

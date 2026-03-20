@@ -6,7 +6,7 @@ from app.core.config import database_url
 from app.models.base import Base
 
 
-CANDIDATE_EMBEDDING_DIMENSIONS = 1536
+CANDIDATE_EMBEDDING_DIMENSIONS = 384
 USING_POSTGRESQL = database_url.startswith("postgresql")
 
 
@@ -21,7 +21,7 @@ class Candidate(Base):
     summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     years_experience: Mapped[float | None] = mapped_column(Float, nullable=True)
     if USING_POSTGRESQL:
-        # Provisional dimension until we choose a specific embeddings model.
+        # Matches the current local embeddings model output size.
         embedding: Mapped[list[float] | None] = mapped_column(
             Vector(CANDIDATE_EMBEDDING_DIMENSIONS),
             nullable=True,
