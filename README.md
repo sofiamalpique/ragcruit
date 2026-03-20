@@ -4,13 +4,13 @@ AI recruiting prototype for candidate ingestion, local embeddings generation, an
 
 ## Project Overview
 
-Ragcruit is an early-stage recruiting project built around a FastAPI backend and a minimal React frontend. The current repository demonstrates a concrete end-to-end flow:
+Ragcruit is an early-stage recruiting project built around a FastAPI backend, PostgreSQL + pgvector, and a minimal React frontend. The current repository demonstrates a concrete local flow:
 
-1. create a candidate record
+1. create a candidate
 2. generate a local embedding with `sentence-transformers`
 3. persist that vector in PostgreSQL with pgvector
 4. run semantic candidate search
-5. view results in the frontend
+5. view the results in the frontend
 
 This is not yet a complete hiring platform. It is a focused foundation for candidate storage and similarity-based retrieval.
 
@@ -20,14 +20,16 @@ This is not yet a complete hiring platform. It is a focused foundation for candi
 - PostgreSQL 16 + pgvector local stack through Docker Compose
 - Local embeddings generation using `sentence-transformers/all-MiniLM-L6-v2`
 - Candidate embeddings persisted on create when running against PostgreSQL
-- Semantic search through `POST /candidates/search`
+- Semantic candidate search through `POST /candidates/search`
 - Minimal React + Vite + TypeScript frontend for candidate creation, semantic search, and result display
+- One-command local web stack through Docker Compose
+- Alembic-backed database migrations for the PostgreSQL container path
 
 ## Architecture / Repo Structure
 
-- [backend/](backend/): FastAPI application, candidate schemas/models/services, database setup, and tests
+- [backend/](backend/): FastAPI application, candidate schemas/models/services, Alembic migrations, and tests
 - [frontend/](frontend/): React + Vite + TypeScript single-page frontend
-- [docker-compose.yml](docker-compose.yml): local PostgreSQL + backend stack
+- [docker-compose.yml](docker-compose.yml): local PostgreSQL + backend + frontend stack
 - [docker/postgres/init/01-enable-pgvector.sql](docker/postgres/init/01-enable-pgvector.sql): enables the `vector` extension on fresh local database initialization
 - [docs/](docs/): reserved for additional project documentation
 
@@ -36,6 +38,7 @@ This is not yet a complete hiring platform. It is a focused foundation for candi
 - Python 3.12
 - FastAPI
 - SQLAlchemy 2.x
+- Alembic
 - PostgreSQL 16
 - pgvector
 - psycopg 3
@@ -48,7 +51,7 @@ This is not yet a complete hiring platform. It is a focused foundation for candi
 
 ## Local Setup
 
-### Backend with Docker Compose
+### One-command local web stack
 
 From the repository root:
 
@@ -60,19 +63,21 @@ This starts:
 
 - PostgreSQL with pgvector on `localhost:5432`
 - the FastAPI backend on `http://localhost:8000`
+- the frontend on `http://localhost:5173`
 
-On a fresh volume, PostgreSQL enables the `vector` extension automatically before the backend creates tables.
+On a fresh volume, PostgreSQL enables the `vector` extension automatically before Alembic runs the current schema migrations.
 
 ### Frontend with npm
 
-From the `frontend/` directory:
+If you want to run the frontend outside Docker:
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-The Vite development server runs separately from Docker Compose. During local development, the frontend proxies `/candidates` requests to `http://localhost:8000`.
+The Vite development server proxies `/candidates` requests to the backend.
 
 ## Current API Capabilities
 
@@ -86,15 +91,16 @@ The Vite development server runs separately from Docker Compose. During local de
 ## Current Limitations
 
 - `skills` are accepted on candidate creation input but are not stored yet
-- search is similarity-based retrieval only; there is no separate advanced ranking layer yet
+- there are no job postings, shortlist workflow, or matching flows yet
 - there is no authentication or user management
-- there are no migrations yet; schema setup still relies on SQLAlchemy metadata creation for the current local workflow
 - the semantic search path is intentionally PostgreSQL + pgvector dependent
+- the frontend is still a small single-page demo surface, not a full product UI
 
 ## Future Improvements
 
-- add schema migrations
 - persist and manage candidate skills cleanly
-- expand the candidate API beyond the current create and search flow
-- add a more explicit ranking layer on top of similarity retrieval
+- add job postings and candidate-to-job matching
+- add a more explicit ranking layer on top of vector similarity
+- introduce shortlist and recruiter workflow state
+- add CV upload and parse-to-draft ingestion
 - grow the frontend beyond the current single-page prototype
