@@ -35,6 +35,38 @@ export type CandidateSearchResponse = {
   results: CandidateSearchResult[];
 };
 
+export type JobCreatePayload = {
+  title: string;
+  company_name: string | null;
+  location: string | null;
+  description: string;
+  requirements: string | null;
+  min_years_experience: number | null;
+};
+
+export type JobRead = {
+  id: number;
+  title: string;
+  company_name: string | null;
+  location: string | null;
+  description: string;
+  requirements: string | null;
+  min_years_experience: number | null;
+};
+
+export type JobMatchPayload = {
+  limit: number;
+};
+
+export type JobMatchResult = {
+  candidate: CandidateRead;
+  similarity_score: number;
+};
+
+export type JobMatchResponse = {
+  results: JobMatchResult[];
+};
+
 
 async function apiRequest<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -77,6 +109,32 @@ export function searchCandidates(
   payload: CandidateSearchPayload,
 ): Promise<CandidateSearchResponse> {
   return apiRequest<CandidateSearchResponse>("/candidates/search", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export function createJob(payload: JobCreatePayload): Promise<JobRead> {
+  return apiRequest<JobRead>("/jobs", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+
+export function listJobs(): Promise<JobRead[]> {
+  return apiRequest<JobRead[]>("/jobs", {
+    method: "GET",
+  });
+}
+
+
+export function matchJob(
+  jobId: number,
+  payload: JobMatchPayload,
+): Promise<JobMatchResponse> {
+  return apiRequest<JobMatchResponse>(`/jobs/${jobId}/match`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
