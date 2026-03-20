@@ -1,21 +1,35 @@
 # Ragcruit
 
-AI Hiring Copilot for CV search, matching, and ranking.
+AI recruiting prototype for candidate ingestion, local embeddings generation, and semantic search.
 
-## What Ragcruit Is
+## Project Overview
 
-Ragcruit is an early-stage backend-first project for building a hiring workflow around candidate ingestion, storage, semantic matching, and ranking.
+Ragcruit is an early-stage recruiting project built around a FastAPI backend and a minimal React frontend. The current repository demonstrates a concrete end-to-end flow:
 
-At the moment, the repository focuses on the backend and database foundation needed for that product direction. It is not yet a complete hiring platform.
+1. create a candidate record
+2. generate a local embedding with `sentence-transformers`
+3. persist that vector in PostgreSQL with pgvector
+4. run semantic candidate search
+5. view results in the frontend
 
-## Current Status
+This is not yet a complete hiring platform. It is a focused foundation for candidate storage and similarity-based retrieval.
 
-- FastAPI backend is running locally.
-- Candidate domain foundations are in place: schemas, SQLAlchemy model, mapper, and a first create endpoint.
-- PostgreSQL is supported through `DATABASE_URL`.
-- Local Docker Compose runs the backend together with PostgreSQL and pgvector.
-- A pgvector-ready model field exists as groundwork for future embeddings support.
-- Embeddings generation, vector retrieval, ranking logic, authentication, and frontend product flows are not implemented yet.
+## What Currently Works
+
+- FastAPI backend with candidate creation and semantic search endpoints
+- PostgreSQL 16 + pgvector local stack through Docker Compose
+- Local embeddings generation using `sentence-transformers/all-MiniLM-L6-v2`
+- Candidate embeddings persisted on create when running against PostgreSQL
+- Semantic search through `POST /candidates/search`
+- Minimal React + Vite + TypeScript frontend for candidate creation, semantic search, and result display
+
+## Architecture / Repo Structure
+
+- [backend/](backend/): FastAPI application, candidate schemas/models/services, database setup, and tests
+- [frontend/](frontend/): React + Vite + TypeScript single-page frontend
+- [docker-compose.yml](docker-compose.yml): local PostgreSQL + backend stack
+- [docker/postgres/init/01-enable-pgvector.sql](docker/postgres/init/01-enable-pgvector.sql): enables the `vector` extension on fresh local database initialization
+- [docs/](docs/): reserved for additional project documentation
 
 ## Tech Stack
 
@@ -25,20 +39,18 @@ At the moment, the repository focuses on the backend and database foundation nee
 - PostgreSQL 16
 - pgvector
 - psycopg 3
+- `sentence-transformers`
 - `uv` for Python dependency management
-- Docker Compose for local stack orchestration
+- React
+- Vite
+- TypeScript
+- Docker Compose
 
-## Architecture Overview
+## Local Setup
 
-- [backend/](backend/): FastAPI application, candidate domain code, database setup, and tests
-- [docker-compose.yml](docker-compose.yml): local backend + PostgreSQL stack
-- [docker/postgres/init/01-enable-pgvector.sql](docker/postgres/init/01-enable-pgvector.sql): Postgres init hook that enables the `vector` extension on a fresh database
-- [frontend/](frontend/): reserved for future frontend work
-- [docs/](docs/): reserved for project documentation
+### Backend with Docker Compose
 
-## Local Development
-
-The simplest way to run the current backend stack is from the repository root:
+From the repository root:
 
 ```bash
 docker compose up --build
@@ -49,37 +61,40 @@ This starts:
 - PostgreSQL with pgvector on `localhost:5432`
 - the FastAPI backend on `http://localhost:8000`
 
-For a fresh database volume, the local Postgres container enables the `vector` extension automatically during initialization.
+On a fresh volume, PostgreSQL enables the `vector` extension automatically before the backend creates tables.
 
-For host-side tools, [.env.example](.env.example) contains the matching local PostgreSQL URL:
+### Frontend with npm
+
+From the `frontend/` directory:
 
 ```bash
-postgresql+psycopg://postgres:postgres@localhost:5432/ragcruit
+npm install
+npm run dev
 ```
 
-Inside Docker Compose, the backend uses the internal Postgres service hostname instead of `localhost`.
+The Vite development server runs separately from Docker Compose. During local development, the frontend proxies `/candidates` requests to `http://localhost:8000`.
 
-For the non-Docker backend workflow, see [backend/README.md](backend/README.md).
+## Current API Capabilities
 
-## What Currently Works
+- `GET /health`
+  Basic service health check.
+- `POST /candidates`
+  Creates a candidate, generates a local embedding when PostgreSQL/pgvector is active, and persists the stored vector with the candidate record.
+- `POST /candidates/search`
+  Accepts raw query text, generates a local embedding for that query, and returns candidates ordered by vector similarity.
 
-- `GET /health` responds successfully
-- `POST /candidates` accepts candidate input and persists core candidate fields to the database
-- local PostgreSQL startup works with pgvector enabled on a fresh volume
-- the candidate model is prepared for a future embedding column under PostgreSQL
+## Current Limitations
 
-Current limitations:
+- `skills` are accepted on candidate creation input but are not stored yet
+- search is similarity-based retrieval only; there is no separate advanced ranking layer yet
+- there is no authentication or user management
+- there are no migrations yet; schema setup still relies on SQLAlchemy metadata creation for the current local workflow
+- the semantic search path is intentionally PostgreSQL + pgvector dependent
 
-- candidate `skills` are accepted on input but are not stored yet
-- embeddings are not generated or written yet
-- vector search and retrieval are not implemented yet
-- there is no frontend application yet
+## Future Improvements
 
-## What Is Planned Next
-
-- add proper schema migration support
+- add schema migrations
 - persist and manage candidate skills cleanly
-- implement embeddings generation for candidates
-- enable pgvector-backed similarity search and ranking
-- expand the candidate API beyond the initial create flow
-- start the first frontend experience on top of the current backend foundation
+- expand the candidate API beyond the current create and search flow
+- add a more explicit ranking layer on top of similarity retrieval
+- grow the frontend beyond the current single-page prototype
