@@ -16,7 +16,11 @@ def get_embedding_model() -> SentenceTransformer:
     return _embedding_model
 
 
+def generate_text_embedding(text: str) -> list[float]:
+    embedding = get_embedding_model().encode(text)
+    return embedding.tolist()
+
+
 def generate_candidate_embedding(candidate: Candidate) -> list[float]:
     candidate_text = build_candidate_embedding_text(candidate)
-    embedding = get_embedding_model().encode(candidate_text)
-    return embedding.tolist()
+    return generate_text_embedding(candidate_text)
