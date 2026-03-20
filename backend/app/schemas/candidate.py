@@ -20,3 +20,17 @@ class CandidateRead(CandidateBase):
     model_config = ConfigDict(str_strip_whitespace=True, from_attributes=True)
 
     id: int
+
+
+class CandidateSearchRequest(BaseModel):
+    query_text: str = Field(min_length=1)
+    limit: int = Field(default=5, ge=1)
+
+
+class CandidateSearchResult(BaseModel):
+    candidate: CandidateRead
+    similarity_score: float
+
+
+class CandidateSearchResponse(BaseModel):
+    results: list[CandidateSearchResult]
