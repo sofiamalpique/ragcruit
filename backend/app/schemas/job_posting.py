@@ -31,6 +31,8 @@ class JobMatchRequest(BaseModel):
 class JobMatchResult(BaseModel):
     candidate: CandidateRead
     similarity_score: float
+    relevance_score: float
+    match_reasons: list[str]
 
 
 class JobMatchResponse(BaseModel):

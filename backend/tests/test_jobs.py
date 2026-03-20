@@ -150,7 +150,7 @@ def test_match_candidates_to_job_posting_endpoint(monkeypatch) -> None:
                     full_name="Grace Hopper",
                     email="grace@example.com",
                     phone=None,
-                    location="New York",
+                    location="REMOTE",
                     summary="Computer scientist and naval officer.",
                     years_experience=8,
                 ),
@@ -187,6 +187,11 @@ def test_match_candidates_to_job_posting_endpoint(monkeypatch) -> None:
                     "years_experience": 5.0,
                 },
                 "similarity_score": 1 / 1.2,
+                "relevance_score": 1 / 1.2 + 0.1,
+                "match_reasons": [
+                    "Strong semantic match to the job description",
+                    "Experience meets the minimum requirement",
+                ],
             },
             {
                 "candidate": {
@@ -194,11 +199,17 @@ def test_match_candidates_to_job_posting_endpoint(monkeypatch) -> None:
                     "full_name": "Grace Hopper",
                     "email": "grace@example.com",
                     "phone": None,
-                    "location": "New York",
+                    "location": "REMOTE",
                     "summary": "Computer scientist and naval officer.",
                     "years_experience": 8.0,
                 },
                 "similarity_score": 1 / 1.4,
+                "relevance_score": 1 / 1.4 + 0.1 + 0.05,
+                "match_reasons": [
+                    "Semantic match to the job description",
+                    "Experience meets the minimum requirement",
+                    "Location matches the job posting",
+                ],
             },
         ]
     }
