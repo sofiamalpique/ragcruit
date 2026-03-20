@@ -1,10 +1,16 @@
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 import {
   CandidateCreatePayload,
   CandidateRead,
   CandidateSearchResult,
+  JobCreatePayload,
+  JobMatchResult,
+  JobRead,
+  createJob,
   createCandidate,
+  listJobs,
+  matchJob,
   searchCandidates,
 } from "./api";
 
@@ -21,6 +27,20 @@ type CreateFormState = {
 
 type SearchFormState = {
   query_text: string;
+  limit: string;
+};
+
+type JobCreateFormState = {
+  title: string;
+  company_name: string;
+  location: string;
+  description: string;
+  requirements: string;
+  min_years_experience: string;
+};
+
+type JobMatchFormState = {
+  job_posting_id: string;
   limit: string;
 };
 
@@ -41,6 +61,20 @@ const initialCreateForm: CreateFormState = {
 
 const initialSearchForm: SearchFormState = {
   query_text: "",
+  limit: "5",
+};
+
+const initialJobCreateForm: JobCreateFormState = {
+  title: "",
+  company_name: "",
+  location: "",
+  description: "",
+  requirements: "",
+  min_years_experience: "",
+};
+
+const initialJobMatchForm: JobMatchFormState = {
+  job_posting_id: "",
   limit: "5",
 };
 
@@ -69,6 +103,59 @@ function toCreatePayload(form: CreateFormState): CandidateCreatePayload {
   };
 }
 
+function toJobCreatePayload(form: JobCreateFormState): JobCreatePayload {
+  const minYearsExperience = form.min_years_experience.trim();
+
+  return {
+    title: form.title.trim(),
+    company_name: toNullableText(form.company_name),
+    location: toNullableText(form.location),
+    description: form.description.trim(),
+    requirements: toNullableText(form.requirements),
+    min_years_experience:
+      minYearsExperience === "" ? null : Number(minYearsExperience),
+  };
+}
+
+type CandidateResultCardProps = {
+  result: CandidateSearchResult | JobMatchResult;
+};
+
+function CandidateResultCard({ result }: CandidateResultCardProps) {
+  return (
+    <article className="result-card">
+      <div className="result-meta">
+        <div>
+          <h3>{result.candidate.full_name}</h3>
+          <p className="muted">{result.candidate.email}</p>
+        </div>
+        <span className="score-pill">
+          Similarity {result.similarity_score.toFixed(3)}
+        </span>
+      </div>
+
+      <dl className="details-grid">
+        <div>
+          <dt>Location</dt>
+          <dd>{result.candidate.location ?? "Not provided"}</dd>
+        </div>
+        <div>
+          <dt>Phone</dt>
+          <dd>{result.candidate.phone ?? "Not provided"}</dd>
+        </div>
+        <div>
+          <dt>Experience</dt>
+          <dd>{result.candidate.years_experience ?? "Not provided"}</dd>
+        </div>
+      </dl>
+
+      <p className="summary-text">
+        {result.candidate.summary ?? "No summary provided."}
+      </p>
+    </article>
+  );
+}
+
 
 function App() {
   const [createForm, setCreateForm] = useState<CreateFormState>(initialCreateForm);
@@ -82,7 +169,29 @@ function App() {
   const [hasSearched, setHasSearched] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
 
-  const resultCountText = useMemo(() => {
+  const [jobCreateForm, setJobCreateForm] = useState<JobCreateFormState>(
+    initialJobCreateForm,
+  );
+  const [jobCreateStatus, setJobCreateStatus] = useState<StatusMessage | null>(
+    null,
+  );
+  const [createdJob, setCreatedJob] = useState<JobRead | null>(null);
+  const [isCreatingJob, setIsCreatingJob] = useState(false);
+  const [jobs, setJobs] = useState<JobRead[]>([]);
+  const [jobsStatus, setJobsStatus] = useState<StatusMessage | null>(null);
+  const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+
+  const [jobMatchForm, setJobMatchForm] = useState<JobMatchFormState>(
+    initialJobMatchForm,
+  );
+  const [jobMatchResults, setJobMatchResults] = useState<JobMatchResult[]>([]);
+  const [jobMatchStatus, setJobMatchStatus] = useState<StatusMessage | null>(
+    null,
+  );
+  const [hasMatchedJob, setHasMatchedJob] = useState(false);
+  const [isMatchingJob, setIsMatchingJob] = useState(false);
+
+  const candidateSearchCountText = useMemo(() => {
     if (!hasSearched) {
       return "Run a semantic search to see candidate matches.";
     }
@@ -93,6 +202,46 @@ function App() {
 
     return `${searchResults.length} candidate result${searchResults.length === 1 ? "" : "s"}`;
   }, [hasSearched, searchResults.length]);
+
+  const jobMatchCountText = useMemo(() => {
+    if (!hasMatchedJob) {
+      return "Select a job posting and run matching to see candidate results.";
+    }
+
+    if (jobMatchResults.length === 0) {
+      return "No candidates matched the selected job posting.";
+    }
+
+    return `${jobMatchResults.length} matched candidate${jobMatchResults.length === 1 ? "" : "s"}`;
+  }, [hasMatchedJob, jobMatchResults.length]);
+
+  useEffect(() => {
+    async function loadInitialJobs() {
+      setIsLoadingJobs(true);
+      setJobsStatus(null);
+
+      try {
+        const jobPostings = await listJobs();
+        setJobs(jobPostings);
+        setJobMatchForm((current) => ({
+          ...current,
+          job_posting_id:
+            current.job_posting_id !== ""
+              ? current.job_posting_id
+              : (jobPostings[0]?.id?.toString() ?? ""),
+        }));
+      } catch (error) {
+        setJobsStatus({
+          kind: "error",
+          text: error instanceof Error ? error.message : "Loading jobs failed.",
+        });
+      } finally {
+        setIsLoadingJobs(false);
+      }
+    }
+
+    void loadInitialJobs();
+  }, []);
 
   async function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -116,6 +265,38 @@ function App() {
       });
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  async function handleJobCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsCreatingJob(true);
+    setJobCreateStatus(null);
+
+    try {
+      const jobPosting = await createJob(toJobCreatePayload(jobCreateForm));
+      setCreatedJob(jobPosting);
+      setJobs((current) => [
+        jobPosting,
+        ...current.filter((existingJob) => existingJob.id !== jobPosting.id),
+      ]);
+      setJobMatchForm((current) => ({
+        ...current,
+        job_posting_id: jobPosting.id.toString(),
+      }));
+      setJobCreateStatus({
+        kind: "success",
+        text: `Job posting created successfully with id ${jobPosting.id}.`,
+      });
+      setJobCreateForm(initialJobCreateForm);
+    } catch (error) {
+      setJobCreateStatus({
+        kind: "error",
+        text:
+          error instanceof Error ? error.message : "Job posting creation failed.",
+      });
+    } finally {
+      setIsCreatingJob(false);
     }
   }
 
@@ -145,14 +326,44 @@ function App() {
     }
   }
 
+  async function handleJobMatchSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (jobMatchForm.job_posting_id === "") {
+      setJobMatchStatus({
+        kind: "error",
+        text: "Select a job posting before running matching.",
+      });
+      return;
+    }
+
+    setIsMatchingJob(true);
+    setHasMatchedJob(true);
+    setJobMatchStatus(null);
+
+    try {
+      const response = await matchJob(Number(jobMatchForm.job_posting_id), {
+        limit: Number(jobMatchForm.limit),
+      });
+      setJobMatchResults(response.results);
+    } catch (error) {
+      setJobMatchResults([]);
+      setJobMatchStatus({
+        kind: "error",
+        text: error instanceof Error ? error.message : "Job matching failed.",
+      });
+    } finally {
+      setIsMatchingJob(false);
+    }
+  }
+
   return (
     <main className="page">
       <header className="hero">
         <p className="eyebrow">Ragcruit</p>
         <h1>AI hiring copilot frontend</h1>
         <p className="intro">
-          Create candidate records, then query them through the current semantic
-          search API from one small frontend surface.
+          Create candidates and job postings, then run semantic search and
+          job-based matching from one small frontend surface.
         </p>
       </header>
 
@@ -333,51 +544,236 @@ function App() {
             <div className={`status ${searchStatus.kind}`}>{searchStatus.text}</div>
           ) : null}
         </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Create job posting</h2>
+            <p>Create a job and persist its embedding for future matching.</p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleJobCreateSubmit}>
+            <label className="field">
+              <span>Title</span>
+              <input
+                required
+                value={jobCreateForm.title}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    title: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>Company</span>
+              <input
+                value={jobCreateForm.company_name}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    company_name: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>Location</span>
+              <input
+                value={jobCreateForm.location}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    location: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>Description</span>
+              <textarea
+                required
+                rows={4}
+                value={jobCreateForm.description}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    description: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>Requirements</span>
+              <textarea
+                rows={4}
+                value={jobCreateForm.requirements}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    requirements: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="field">
+              <span>Minimum years of experience</span>
+              <input
+                min="0"
+                step="0.5"
+                type="number"
+                value={jobCreateForm.min_years_experience}
+                onChange={(event) =>
+                  setJobCreateForm((current) => ({
+                    ...current,
+                    min_years_experience: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <div className="actions">
+              <button className="button" disabled={isCreatingJob} type="submit">
+                {isCreatingJob ? "Creating..." : "Create job posting"}
+              </button>
+            </div>
+          </form>
+
+          {jobCreateStatus ? (
+            <div className={`status ${jobCreateStatus.kind}`}>
+              {jobCreateStatus.text}
+            </div>
+          ) : null}
+
+          {createdJob ? (
+            <div className="summary-card">
+              <strong>Latest created job</strong>
+              <p>{createdJob.title}</p>
+              <span className="muted">
+                {createdJob.company_name ?? "No company provided"}
+              </span>
+            </div>
+          ) : null}
+        </section>
+
+        <section className="panel">
+          <div className="panel-header">
+            <h2>Match candidates to a job</h2>
+            <p>
+              Use the stored job embedding to retrieve semantically similar
+              candidates.
+            </p>
+          </div>
+
+          <form className="form-grid" onSubmit={handleJobMatchSubmit}>
+            <label className="field">
+              <span>Job posting</span>
+              <select
+                value={jobMatchForm.job_posting_id}
+                onChange={(event) =>
+                  setJobMatchForm((current) => ({
+                    ...current,
+                    job_posting_id: event.target.value,
+                  }))
+                }
+              >
+                <option value="">Select a job posting</option>
+                {jobs.map((jobPosting) => (
+                  <option key={jobPosting.id} value={jobPosting.id}>
+                    {jobPosting.title}
+                    {jobPosting.company_name ? ` · ${jobPosting.company_name}` : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Limit</span>
+              <input
+                min="1"
+                step="1"
+                type="number"
+                value={jobMatchForm.limit}
+                onChange={(event) =>
+                  setJobMatchForm((current) => ({
+                    ...current,
+                    limit: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <div className="actions">
+              <button
+                className="button"
+                disabled={isMatchingJob || isLoadingJobs}
+                type="submit"
+              >
+                {isMatchingJob ? "Matching..." : "Match candidates"}
+              </button>
+            </div>
+          </form>
+
+          {jobsStatus ? (
+            <div className={`status ${jobsStatus.kind}`}>{jobsStatus.text}</div>
+          ) : null}
+
+          {jobMatchStatus ? (
+            <div className={`status ${jobMatchStatus.kind}`}>
+              {jobMatchStatus.text}
+            </div>
+          ) : null}
+
+          <div className="summary-card">
+            <strong>Available jobs</strong>
+            <p>{jobs.length} loaded from the backend</p>
+            <span className="muted">
+              {isLoadingJobs
+                ? "Loading jobs..."
+                : "Create a job first if this list is empty."}
+            </span>
+          </div>
+        </section>
       </div>
 
-      <section className="panel results-panel">
-        <div className="panel-header">
-          <h2>Search results</h2>
-          <p>{resultCountText}</p>
-        </div>
+      <div className="panel-grid">
+        <section className="panel results-panel">
+          <div className="panel-header">
+            <h2>Candidate search results</h2>
+            <p>{candidateSearchCountText}</p>
+          </div>
 
-        <div className="results-list">
-          {searchResults.map((result) => (
-            <article className="result-card" key={result.candidate.id}>
-              <div className="result-meta">
-                <div>
-                  <h3>{result.candidate.full_name}</h3>
-                  <p className="muted">{result.candidate.email}</p>
-                </div>
-                <span className="score-pill">
-                  Similarity {result.similarity_score.toFixed(3)}
-                </span>
-              </div>
+          <div className="results-list">
+            {searchResults.map((result) => (
+              <CandidateResultCard
+                key={`candidate-search-${result.candidate.id}`}
+                result={result}
+              />
+            ))}
+          </div>
+        </section>
 
-              <dl className="details-grid">
-                <div>
-                  <dt>Location</dt>
-                  <dd>{result.candidate.location ?? "Not provided"}</dd>
-                </div>
-                <div>
-                  <dt>Phone</dt>
-                  <dd>{result.candidate.phone ?? "Not provided"}</dd>
-                </div>
-                <div>
-                  <dt>Experience</dt>
-                  <dd>
-                    {result.candidate.years_experience ?? "Not provided"}
-                  </dd>
-                </div>
-              </dl>
+        <section className="panel results-panel">
+          <div className="panel-header">
+            <h2>Job match results</h2>
+            <p>{jobMatchCountText}</p>
+          </div>
 
-              <p className="summary-text">
-                {result.candidate.summary ?? "No summary provided."}
-              </p>
-            </article>
-          ))}
-        </div>
-      </section>
+          <div className="results-list">
+            {jobMatchResults.map((result) => (
+              <CandidateResultCard
+                key={`job-match-${result.candidate.id}`}
+                result={result}
+              />
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
   );
 }
