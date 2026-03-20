@@ -61,6 +61,8 @@ export type JobMatchPayload = {
 export type JobMatchResult = {
   candidate: CandidateRead;
   similarity_score: number;
+  relevance_score: number;
+  match_reasons: string[];
 };
 
 export type JobMatchResponse = {

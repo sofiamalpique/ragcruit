@@ -15,6 +15,7 @@ from app.schemas.job_posting import (
 )
 from app.services.candidate_embeddings import generate_text_embedding
 from app.services.job_postings import (
+    build_job_match_insights,
     build_job_posting_embedding_text,
     job_posting_create_to_model,
 )
@@ -92,12 +93,21 @@ def match_candidates_to_job_posting(
         .limit(match_in.limit)
     )
     rows = db_session.execute(statement).all()
-    results = [
-        JobMatchResult(
-            candidate=CandidateRead.model_validate(candidate),
-            similarity_score=1.0 / (1.0 + float(distance)),
+    results: list[JobMatchResult] = []
+    for candidate, distance in rows:
+        similarity_score = 1.0 / (1.0 + float(distance))
+        relevance_score, match_reasons = build_job_match_insights(
+            job_posting=job_posting,
+            candidate=candidate,
+            similarity_score=similarity_score,
         )
-        for candidate, distance in rows
-    ]
+        results.append(
+            JobMatchResult(
+                candidate=CandidateRead.model_validate(candidate),
+                similarity_score=similarity_score,
+                relevance_score=relevance_score,
+                match_reasons=match_reasons,
+            )
+        )
 
     return JobMatchResponse(results=results)

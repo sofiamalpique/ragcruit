@@ -224,6 +224,17 @@ textarea {
   white-space: nowrap;
 }
 
+.score-pill-primary {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.score-stack {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
 .details-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -243,6 +254,16 @@ textarea {
 
 .summary-text {
   margin: 0;
+}
+
+.reason-list {
+  margin: 16px 0 0;
+  padding-left: 20px;
+  color: #475569;
+}
+
+.reason-list li + li {
+  margin-top: 6px;
 }
 
 .muted {

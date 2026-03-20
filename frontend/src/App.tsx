@@ -122,6 +122,8 @@ type CandidateResultCardProps = {
 };
 
 function CandidateResultCard({ result }: CandidateResultCardProps) {
+  const isJobMatchResult = "relevance_score" in result;
+
   return (
     <article className="result-card">
       <div className="result-meta">
@@ -129,9 +131,16 @@ function CandidateResultCard({ result }: CandidateResultCardProps) {
           <h3>{result.candidate.full_name}</h3>
           <p className="muted">{result.candidate.email}</p>
         </div>
-        <span className="score-pill">
-          Similarity {result.similarity_score.toFixed(3)}
-        </span>
+        <div className="score-stack">
+          {isJobMatchResult ? (
+            <span className="score-pill score-pill-primary">
+              Relevance {result.relevance_score.toFixed(3)}
+            </span>
+          ) : null}
+          <span className="score-pill">
+            Similarity {result.similarity_score.toFixed(3)}
+          </span>
+        </div>
       </div>
 
       <dl className="details-grid">
@@ -152,6 +161,14 @@ function CandidateResultCard({ result }: CandidateResultCardProps) {
       <p className="summary-text">
         {result.candidate.summary ?? "No summary provided."}
       </p>
+
+      {isJobMatchResult && result.match_reasons.length > 0 ? (
+        <ul className="reason-list">
+          {result.match_reasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      ) : null}
     </article>
   );
 }
