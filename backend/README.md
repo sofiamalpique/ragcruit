@@ -33,7 +33,7 @@ See the root `.env.example` for a minimal local PostgreSQL example.
 
 The backend uses `psycopg[binary]` for local development, so a separate local `libpq` installation is not required.
 The `pgvector` Python package is also installed, so SQLAlchemy vector columns can be added next without more driver setup.
-To enable real candidate embeddings generation, set `OPENAI_API_KEY`. The default embedding model is `text-embedding-3-small`.
+Embeddings are generated locally with `sentence-transformers`. The default model is `sentence-transformers/all-MiniLM-L6-v2`, and you can override it with `EMBEDDING_MODEL_NAME`.
 
 For PostgreSQL, use a SQLAlchemy URL like:
 
@@ -43,4 +43,14 @@ export DATABASE_URL="postgresql+psycopg://postgres:postgres@localhost:5432/ragcr
 
 ## Scope
 
-This folder currently contains only the initial application structure and a basic health check endpoint.
+This backend currently exposes:
+
+- `GET /health`
+- `POST /candidates`
+- `POST /candidates/search`
+- `POST /jobs`
+- `GET /jobs`
+- `GET /jobs/{job_posting_id}`
+- `POST /jobs/{job_posting_id}/match`
+
+The SQLite fallback is useful for basic local development, but semantic search and job matching require PostgreSQL with pgvector-backed embeddings.

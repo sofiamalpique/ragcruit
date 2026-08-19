@@ -1,6 +1,6 @@
 # Ragcruit
 
-AI recruiting prototype for candidate ingestion, local embeddings generation, and semantic search.
+AI recruiting prototype for candidate ingestion, local embeddings generation, semantic search, and early job matching.
 
 ## Project Overview
 
@@ -9,19 +9,23 @@ Ragcruit is an early-stage recruiting project built around a FastAPI backend, Po
 1. create a candidate
 2. generate a local embedding with `sentence-transformers`
 3. persist that vector in PostgreSQL with pgvector
-4. run semantic candidate search
-5. view the results in the frontend
+4. create a job posting and persist its embedding
+5. run semantic candidate search
+6. run candidate-to-job matching
+7. view the results in the frontend
 
-This is not yet a complete hiring platform. It is a focused foundation for candidate storage and similarity-based retrieval.
+This is not yet a complete hiring platform. It is a focused prototype for candidate storage, job posting storage, and similarity-based retrieval on top of local embeddings.
 
 ## What Currently Works
 
-- FastAPI backend with candidate creation and semantic search endpoints
+- FastAPI backend with candidate creation, semantic search, job posting creation/listing/read, and candidate-to-job matching endpoints
 - PostgreSQL 16 + pgvector local stack through Docker Compose
 - Local embeddings generation using `sentence-transformers/all-MiniLM-L6-v2`
 - Candidate embeddings persisted on create when running against PostgreSQL
+- Job posting embeddings persisted on create when running against PostgreSQL
 - Semantic candidate search through `POST /candidates/search`
-- Minimal React + Vite + TypeScript frontend for candidate creation, semantic search, and result display
+- Candidate-to-job matching through `POST /jobs/{job_posting_id}/match`
+- Minimal React + Vite + TypeScript frontend for candidate creation, job posting creation, semantic search, matching, and result display
 - One-command local web stack through Docker Compose
 - Alembic-backed database migrations for the PostgreSQL container path
 
@@ -87,20 +91,29 @@ The Vite development server proxies `/candidates` requests to the backend.
   Creates a candidate, generates a local embedding when PostgreSQL/pgvector is active, and persists the stored vector with the candidate record.
 - `POST /candidates/search`
   Accepts raw query text, generates a local embedding for that query, and returns candidates ordered by vector similarity.
+- `POST /jobs`
+  Creates a job posting, generates a local embedding when PostgreSQL/pgvector is active, and persists the job record.
+- `GET /jobs`
+  Lists persisted job postings in reverse chronological order.
+- `GET /jobs/{job_posting_id}`
+  Returns a single job posting by id.
+- `POST /jobs/{job_posting_id}/match`
+  Uses the persisted job embedding to rank candidates by similarity, then adds lightweight relevance adjustments for experience and location matches.
 
 ## Current Limitations
 
 - `skills` are accepted on candidate creation input but are not stored yet
-- there are no job postings, shortlist workflow, or matching flows yet
+- job postings currently support create/list/get only; there is no update/delete flow yet
+- there is no shortlist workflow or recruiter workflow state yet
 - there is no authentication or user management
-- the semantic search path is intentionally PostgreSQL + pgvector dependent
+- semantic candidate search and candidate-to-job matching are intentionally PostgreSQL + pgvector dependent
 - the frontend is still a small single-page demo surface, not a full product UI
 
 ## Future Improvements
 
 - persist and manage candidate skills cleanly
-- add job postings and candidate-to-job matching
-- add a more explicit ranking layer on top of vector similarity
+- add job posting update/delete flows and a fuller posting lifecycle
+- add a more explicit ranking layer beyond the current similarity + lightweight heuristics
 - introduce shortlist and recruiter workflow state
 - add CV upload and parse-to-draft ingestion
 - grow the frontend beyond the current single-page prototype
